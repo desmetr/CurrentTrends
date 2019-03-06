@@ -1,0 +1,177 @@
+#######################################################
+Man Is To Computer Programmer As Woman Is To Housemaker
+#######################################################
+
+---------------
+1. Introduction
+---------------
+
+	word embedding 
+		* representation of word w as d-dimensional word vector w element of R^d
+		* conveys word meaning
+			- words with similar semantic meaning have vectors that are close together
+			- vector differences show relationships between words
+
+		* sexism = man - woman ~= computer programmer - homemaker
+				 = father - mother ~= doctor - nurse
+
+	paper studies word2vec
+
+	word embeddings not only reflect the bias but can amplify them as well = risk and challenge
+		* bias is implicitly present in data
+		=> can be used to extract implicit gender associations from data
+
+	quantify bias?
+		* gender-specific words (brother, sister, businessman, businesswoman) vs gender-neutral words
+	* use the gender-specific words to learn a gender subspace in the embedding
+
+-------------------------------
+2. Related Work and Preliminary
+-------------------------------
+
+	2.1 Gender bias and stereotype in English
+	.........................................
+
+		* biases differ across people but commonalities can be detected
+		* biases can be present without people knowing them
+
+	2.2 Bias within algorithms
+	..........................
+
+		* bias in ads presented to users
+		* racial bias in repeat offenders prediction
+		* different dialects and word-choices (of a minority) might not be able to be processed by a system trained on standard language
+		* fair classification
+
+	2.3 Word embedding
+	..................
+
+		* assume we know N = set of gender neutral words (flight attendant, shoes, ...)
+		* assume we know P = set of F-M gender pairs (she-he, mother-father, ...)
+		* similarity between vectors: use cosine similarity
+		* dataset used = Google News corpus
+
+	2.4 Crowd experiments
+	.....................
+
+		gather information of words and stereotypes from crowds
+
+-------------------------------------------------
+3. Geometry of Gender and Bias in Word Embeddings
+-------------------------------------------------
+
+	problem: understand biases present in word-embedding and extent to which these geometric biases agree with human notion of gender stereotypes
+
+	two simple methods:
+		1. does the embedding have stereotypes on occupation words?
+		2. does the embedding produce analogies that are judged to reflect stereotypes by humans?
+
+	3.1 Occupational stereotypes
+	............................
+
+		occupations can be female-stereotypic, male-stereotypic or neutral 
+			e.g. male = maestro, skipper, captain, ...
+				 female = homemaker, nurse, receptionist, ...
+
+			projection of these words on a she-he axis is strongly correlated with stereotypicality estimates of these words
+				=> geometric bias of embedding vectors is aligned with crowd judgment
+
+	3.2 Analogies exhibiting stereotypes
+	....................................
+
+		standard analogy task = given three words (he, she, king), look for the 4th word to solve he to king as she to x
+
+		modify this task: given two words (he, she), generate pair of words x and y such that he to x is as she to y, and is a good analogy
+			use scoring metric based on a given input = seed (a, b) for all possible pairs (x, y)
+			we want a good analogy pair to be parallel to the seed direction while the two words are not far apart in order to be semantically coherent
+
+			use threshold delta to define the semantic similarity, delta = 1, works well in practice
+			all embeddings are normalized, thus this threshold corresponds to an angle <= PI / 3
+				= two words are close to each other than they are to the origin
+
+		used crowd-workers to evaluate the analogies
+			1. does the pairing make sense as an analogy?
+			2. does it reflect a gender stereotype?
+
+		results:
+			72/150 analogies were rated as gender-appropriate by five or more out of 10 crowd-workers
+			29/150 analogies were rated as exhibiting gender stereotypes by five or more out of 10 crowd-workers
+
+	3.3 Identifying the gender subspace
+	...................................
+
+		identify the gender direction and quantify the bias independent of the extent to which it is aligned with the crows bias
+
+		to get more robust estimation of bias and because language is messy: aggregate across multiple paired comparisons
+			(she - he and woman - man)
+
+		=> obtain a gender direction g element of R^d, helps us to quantify direct and indirect biases
+
+		gender pair differences are not parallel in practice
+			1. there are different biases associated with different gender pairs
+			2. polysemy of a word (man = noun and verb)
+			3. randomness in the words count in any finite sample will also lead to differences
+
+		to identify gender subspace:
+			take principal components of the gender pair difference vectors
+			observed: the first eigenvector is significantly larger than the rest
+					  the big decrease in eigenvalues we would expect of a random sampling is much more gradual and uniform
+
+			=> hypothesize that top PC (g) captures the gender subspace
+
+	3.4 Direct bias
+	...............
+
+		first identify words that should be gender-neutral = N
+
+		direct gender bias of an embedding = (1 / |N|) * sum_{w el N} |cos(w,g)|^c
+			c = parameter that determines how strict the measuring should be, if c = 0: the cos will be 0 only if w has no overlap with g
+			the stricter the bias, the less stereotypes learned
+
+-----------------------
+4. Debiasing Algorithms
+-----------------------
+
+	assumptions 
+		1. algorithms are defined in terms of sets of words rather than just pair (allows for other biases)
+		2. we have a set of words to neutralize or set of words NOT to neutralize (usually smaller)
+
+	STEP 1: Identify gender subspace (see paper for notation)
+		identify a direction of the embedding that captures the bias
+	
+	STEP 2: Neutralize and Equalize (Soften) (see paper for notation)
+		neutralize = gender neutral words are zero in the gender subspace
+		equalize = enforces the property that any neutral word is equidistant to all words in each equality set
+			disadvantage of equalize = removes certain distinctions that could be valuable in certain applications (grandfather example)
+
+	! centering of embeddings is very important
+		without centering the embeddings for male and female would be exactly the same and we would lose analogies as father:male :: mother:female
+
+-----------------------------------
+5. Determining Gender Neutral Words
+-----------------------------------
+
+	more efficient to enumarete the set of gender specific words S take the gender neutral words to be the complement N = W \ S
+
+	start with a smaller dataset (26,377 words) and use a SVM classifier to label all the words (in a bigger dataset) correctly
+
+--------------------
+6. Debiasing Results
+--------------------
+
+	example: he to doctor is as she to X
+		original embedding gives X = nurse
+		hard-debiased embedding gives X = physician
+
+	* hard-debiasing
+		- hard-debiased embeddings preserves gender appropriate analogies such as she to ovarian cancer and he to prostate cancer
+		- number of appropriate analogies remains similar in hard-debiased embeddings compared to original embeddings
+
+	* soft-debiasing
+		- less effective in removing gender bias
+
+-------------
+7. Discussion
+-------------
+
+	/ 
